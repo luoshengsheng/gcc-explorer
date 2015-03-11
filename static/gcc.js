@@ -135,7 +135,7 @@ function makePermalink() {
     shortenURL(window.location.href.split('#')[0] + '#' + serialiseState(),
         function (shorturl) {
             $('#permalink').val(shorturl);
-        })
+        });
 }
 
 function hidePermalink() {
@@ -186,6 +186,7 @@ function deserialiseState(state) {
     }
     setFilterUi(state.filterAsm);
     for (var i = 0; i < Math.min(allCompilers.length, state.compilers.length); i++) {
+        allCompilers[i].setFilters(state.filterAsm);
         allCompilers[i].deserialiseState(state.compilers[i]);
     }
     return true;
@@ -196,18 +197,12 @@ function initialise(options) {
     var actualFilters = $.parseJSON(window.localStorage.filter || defaultFilters);
     setFilterUi(actualFilters);
 
-    var languageType = "text/x-c++src";
-    $(".language-name").text(options.language);
-    if (options.language == "Rust") {
-        languageType = "text/x-rustsrc";
-    } else if (options.language == "D") {
-        languageType = "text/x-d";
-    }
     $(".compiler_options").val(options.compileoptions);
+    $(".language-name").text(options.language);
 
     var compiler = new Compiler($('body'), actualFilters, "a", function () {
         hidePermalink();
-    }, languageType);
+    }, options.language);
     allCompilers.push(compiler);
     currentCompiler = compiler;
 
@@ -291,5 +286,5 @@ function setFilterUi(asmFilters) {
 }
 
 $(function () {
-    initialise(OPTIONS)
+    initialise(OPTIONS);
 });

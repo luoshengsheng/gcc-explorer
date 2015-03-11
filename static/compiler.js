@@ -45,7 +45,7 @@ function clearBackground(cm) {
 
 const NumRainbowColours = 12;
 
-function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmMode) {
+function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, lang) {
     var compilersById = {};
     var compilersByAlias = {};
     var pendingTimeout = null;
@@ -55,6 +55,22 @@ function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmM
     var currentAssembly = null;
     var filters = origFilters;
     var ignoreChanges = true; // Horrible hack to avoid onChange doing anything on first starting, ie before we've set anything up.
+
+    var cmMode;
+    switch (lang.toLowerCase()) {
+        default:
+            cmMode = "text/x-c++src";
+            break;
+        case "rust":
+            cmMode = "text/x-rustsrc";
+            break;
+        case "d":
+            cmMode = "text/x-d";
+            break;
+        case "go":
+            cmMode = "text/x-go";
+            break;
+    }
 
     cppEditor = CodeMirror.fromTextArea(domRoot.find(".editor textarea")[0], {
         lineNumbers: true,
@@ -78,7 +94,9 @@ function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmM
         window.localStorage[windowLocalPrefix + "." + name] = value;
     }
 
-    if (getSetting('code')) cppEditor.setValue(getSetting('code'));
+    var codeText = getSetting('code');
+    if (!codeText) codeText = $(".template.lang." + lang.replace(/[^a-zA-Z]/g, '').toLowerCase()).text();
+    if (codeText) cppEditor.setValue(codeText);
     domRoot.find('.compiler').change(onCompilerChange);
     domRoot.find('.compiler_options').change(onChange).keyup(onChange);
     ignoreChanges = false;
@@ -114,7 +132,14 @@ function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmM
         for (var i = 0; i < errorWidgets.length; ++i)
             cppEditor.removeLineWidget(errorWidgets[i]);
         errorWidgets.length = 0;
+        var numLines = 0;
         parseLines(stderr + stdout, function (lineNum, msg) {
+            if (numLines > 50) return;
+            if (numLines === 50) {
+                lineNum = null;
+                msg = "Too many output lines...truncated";
+            }
+            numLines++;
             var elem = $('.result .output .template').clone().appendTo('.result .output').removeClass('template');
             if (lineNum) {
                 errorWidgets.push(cppEditor.addLineWidget(lineNum - 1, makeErrNode(msg), {
@@ -214,7 +239,8 @@ function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmM
                 type: 'POST',
                 url: '/compile',
                 dataType: 'json',
-                data: data,
+                contentType: 'application/json',
+                data: JSON.stringify(data),
                 success: function (result) {
                     onCompileResponse(data, result);
                 }
@@ -267,12 +293,14 @@ function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmM
         if (compiler === undefined)
             return;
         domRoot.find('.filter button.btn[value="intel"]').toggleClass("disabled", !compiler.supportedOpts["-masm"]);
+        $(".compilerVersion").text(compiler.name + " (" + compiler.version + ")");
     }
 
     function mapCompiler(compiler) {
         if (!compilersById[compiler]) {
             // Handle old settings and try the alias table.
-            compiler = compilersByAlias[compiler].id;
+            compiler = compilersByAlias[compiler];
+            if (compiler) compiler = compiler.id;
         }
         return compiler;
     }
@@ -284,7 +312,7 @@ function Compiler(domRoot, origFilters, windowLocalPrefix, onChangeCallback, cmM
         $.each(compilers, function (index, arg) {
             compilersById[arg.id] = arg;
             if (arg.alias) compilersByAlias[arg.alias] = arg;
-            domRoot.find('.compiler').append($('<option value="' + arg.id + '">' + arg.name + " (" +arg.version + ')</option>'));
+            domRoot.find('.compiler').append($('<option value="' + arg.id + '">' + arg.name + '</option>'));
         });
         var compiler = getSetting('compiler');
         if (!compiler) compiler = defaultCompiler;
