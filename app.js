@@ -24,6 +24,12 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 // POSSIBILITY OF SUCH DAMAGE.
 
+//模块用处
+//nopt:用于opt解析，用于解析处理命令行：：用于执行shell命令  node option parsing
+//os:获取操作系统的信息：cpu型号，内存大小，主机名等
+//path:路径操作：标准化路径或者其他路径相关操作
+//fs-extra:文件操作工具库
+//promise:用于实现promise标准，，，多个异步函数回调处理的流程控制
 var nopt = require('nopt'),
     os = require('os'),
     props = require('./lib/properties'),
